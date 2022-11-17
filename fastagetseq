@@ -1,0 +1,54 @@
+#!/usr/bin/env -S awk -f
+function full_check_title(title){
+#    print title
+    for (the_id in ids_requested){if (the_id &&  title ~ the_id) { 
+	    
+	    return the_id } }
+    return 0
+}
+BEGIN { 
+    if (i){    while ((getline line <  i ) > 0)  { if(line){ids_requested [ line ] = 0} }   }
+    else if (I) {  ids_requested [ I ] = 0  } 
+    else { 
+	print "### This program is built to parse a fasta file and extract a list of entries, given their fasta ids (normally the first word of the title line). Possible usages:\n  # 1.  fastagetseq -v I=single_fasta_id  input.fasta  >  output.fasta\n  # 2.  fastagetseq -v i=file_with_ids    input.fasta  >  output.fasta\n ## Additional options:\n   -v f=1       full search (very slow); if any input id is present in any part of a fasta header, the sequence is output\n   -v n=index   take the $index field of fasta header as id. Can be combined with -F\n    example to catch the third |-separated field:   fastagetseq -F\"|\" -v n=3 -v i=id_file   input.fasta > output.fasta\n### if some ids are repeated in the input file, or if some ids are not found in the input file, messages are printed to stderr" > "/dev/stderr"
+	exit(8)
+    }
+}	
+
+{
+ if ( /^>/ ){
+     if (n && n!=1){ first_word =$n }
+     else{           first_word = substr($1, 2) } #default
+     
+     if (f){
+       result=full_check_title($0)
+       if (result){ 	 
+	   first_word=result
+	   ids_requested[first_word] += 1
+	   print_it = 1
+       }
+       else {print_it = 0}
+     }
+     else{
+       if (first_word in ids_requested){ 
+	 ids_requested[first_word] += 1
+	 print_it = 1
+       }
+       else {print_it = 0}
+     }
+
+
+     if (print_it &&  ids_requested[first_word] != 1){ ## this id already matched once!
+	     print "WARNING this ID '" first_word  "' was found more than once! Reporting all sequences... " > "/dev/stderr"	   }
+
+   }
+
+if (print_it){   print   }
+}
+END { ##checking that all requested words were found
+    for (word in ids_requested) {
+      if  (ids_requested [word]  < 1){print "WARNING this ID '" word  "' was NOT found ! " > "/dev/stderr"}
+    }
+}
+
+
